@@ -15,6 +15,10 @@ async def reg_user(tg_id: int, tg_full_name: str, user_fname: str, user_sname: s
                              user_sname=user_sname,
                              user_surname=user_surname))
             await session.commit()          #сохранение информации
+# а есть ли юзер?
+async def find_user(tg_id: int):
+    async with async_session() as session:  # контекстный менеджер для открытия и зарытия сессии
+        return await session.scalar(select(User).where(User.tg_id == tg_id))
 
 #запись данных о присутствии/прочее
 async def log_user(tg_id: int, date: str, time: str, attendance_text: str, attendance: str):

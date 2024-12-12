@@ -20,6 +20,8 @@ class User(Base):
     user_fname = mapped_column(String(25))          #имя при регистрации
     user_sname = mapped_column(String(25))          #отчество
     user_surname = mapped_column(String(25))        #фамилия
+    user_city = mapped_column(String(50))           # город
+    user_point = mapped_column(String(50))          # рабочий пункт
 
 class Log(Base):
     __tablename__ = 'logs'
