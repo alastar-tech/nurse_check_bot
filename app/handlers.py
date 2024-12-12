@@ -5,6 +5,7 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext          #для управления состояниями юзера при регистрации
 
 import app.keyboards as kb  #импорт всех клавиатур
+import app.database_work as dbw
 
 router = Router()           #выполняет роль диспетчера
 
@@ -16,9 +17,13 @@ class Reg(StatesGroup):
 #обработка команды /start
 @router.message(Command('start'))                 
 async def cmd_start(message: Message):
-    await message.answer('Это бот-помощник учета количества отработанных смен. Я буду записывать отметки о вашем присутствии в журнал.'
-                         ,reply_markup=kb.main)
-    await message.answer('Для того, чтобы отметиться, нажмите на кнопку ниже.')
+    await message.answer('Это бот-помощник учета количества отработанных смен. Я буду записывать отметки о вашем присутствии в журнал.')
+    db = dbw.DBWork() # Создаем объект класса для запросов в БД
+    user_check = await db.find_user(message.from_user.id)
+    if(user_check==False):
+        await message.answer('Мы с Вами еще не знакомы, но так как разработчику было лень писать алгоритм запроса имени, то поехали дальше 😁', reply_markup=kb.main)
+    else:
+        await message.answer(f'Здравствуйте, {user_check}, чтобы отметиться, нажмите на кнопку ниже.', reply_markup=kb.main)
 
 
 #обработка кнопки Поставить отметку
@@ -33,6 +38,8 @@ async def check_in(message: Message):
 @router.callback_query(F.data == 'yes')                 
 async def check_in_yes(callback: CallbackQuery):
     await callback.answer()
+    db = dbw.DBWork()  # Создаем объект класса для запросов в БД
+    db.logbook_add(callback.message.from_user.id,1)
     await callback.message.answer('Рад вас видеть! Данные о присутствии я записал в журнал.')
     await callback.message.answer('Хорошей вам смены!')
 
@@ -65,6 +72,8 @@ async def reg_two(message: Message, state: FSMContext):
 @router.message(F.text)          
 async def reason(message: Message):
     reason_text = message.text
+    db = dbw.DBWork()  # Создаем объект класса для запросов в БД
+    db.logbook_add(message.from_user.id,0, reason_text)
     await message.answer('Мне жаль, что вам не удалось выйти на работу. Буду ждать вашего возвращения!')
     await message.answer('Информацию я передал.')
     
