@@ -17,7 +17,6 @@ async def reg_user(tg_id: int, tg_full_name: str, user_fname: str, user_sname: s
             await session.commit()          #сохранение информации
 
 #запись данных о присутствии/прочее
-#ПРОВЕРИТЬ корректность!
 async def log_user(tg_id: int, date: str, time: str, attendance_text: str, attendance: str):
     async with async_session() as session:   #контекстный менеджер для открытия и зарытия сессии
         session.add(Log(tg_id=tg_id, 
