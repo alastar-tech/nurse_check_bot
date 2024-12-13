@@ -1,0 +1,28 @@
+from app.database.models import async_session
+from app.database.models import User, Log
+from sqlalchemy import select
+
+
+#запись данных о регистрации
+async def reg_user(tg_id: int, tg_full_name: str, user_fname: str, user_sname: str, user_surname: str):
+    async with async_session() as session:   #контекстный менеджер для открытия и зарытия сессии
+        user = await session.scalar(select(User).where(User.tg_id == tg_id))
+    
+        if not user:
+            session.add(User(tg_id=tg_id, 
+                             tg_full_name=tg_full_name,
+                             user_fname=user_fname,
+                             user_sname=user_sname,
+                             user_surname=user_surname))
+            await session.commit()          #сохранение информации
+
+#запись данных о присутствии/прочее
+#ПРОВЕРИТЬ корректность!
+async def log_user(tg_id: int, date: str, time: str, attendance_text: str, attendance: str):
+    async with async_session() as session:   #контекстный менеджер для открытия и зарытия сессии
+        session.add(Log(tg_id=tg_id, 
+                        date=date,
+                        time=time,
+                        attendance_text=attendance_text,
+                        attendance=attendance))
+        await session.commit()          #сохранение информации

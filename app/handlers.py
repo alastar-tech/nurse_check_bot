@@ -3,8 +3,10 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext          #для управления состояниями юзера при регистрации
+from datetime import datetime
 
-import app.keyboards as kb  #импорт всех клавиатур
+import app.keyboards as kb          #импорт всех клавиатур
+import app.database.requests as rq  #импорт запросов к БД
 
 router = Router()           #выполняет роль диспетчера
 
@@ -20,7 +22,6 @@ class Register(StatesGroup):
     correct_yes = State()
     correct_no = State()
     
-
 
 #обработка команды /start
 @router.message(Command('start'))                 
@@ -77,12 +78,11 @@ async def reg_yes(callback: CallbackQuery, state: FSMContext):
     user_fname = reg_data['first_name']
     user_sname = reg_data['second_name']
     user_surname = reg_data['surname']
-    user_id = callback.from_user.id
+    tg_id = callback.from_user.id
     tg_full_name = callback.from_user.full_name
     
+    await rq.reg_user(tg_id, tg_full_name, user_fname, user_sname, user_surname)
     await callback.message.answer('Регистрация пройдена! Буду ждать вашей отметки.')
-    await callback.message.answer(f'user_id: {user_id}\ntg_full_name: {tg_full_name}\
-                         \nuser_fname: {user_fname}\nuser_sname: {user_sname}\nuser_surname: {user_surname}')
     await state.clear()
                         
     
@@ -116,6 +116,14 @@ async def check_in(message: Message):
 @router.callback_query(F.data == 'check_in_yes')                 
 async def check_in_yes(callback: CallbackQuery):
     await callback.answer()
+    date = datetime.now().strftime("%Y-%m-%d")  #дата сообщения
+    time = datetime.now().strftime("%H:%M:%S")  #время сообщения (местное время пользователя)
+    tg_id = callback.from_user.id
+    attendance_text = 'я на работе'
+    
+    attendance = 'на смене'                             #ЗАГЛУШКА ДЛЯ МОДЕЛИ!!!!
+    
+    await rq.log_user(tg_id, date, time, attendance_text, attendance)
     await callback.message.answer('Рад вас видеть! Данные о присутствии я записал в журнал.')
     await callback.message.answer('Хорошей вам смены!')
 
@@ -130,12 +138,17 @@ async def check_in_no(callback: CallbackQuery, state: FSMContext):
 @router.message(Reason.reason_text)
 async def reason(message: Message, state: FSMContext):
     await state.update_data(reason_text=message.text)              #обновление информации о записи текста
-    data = await state.get_data()                                  #сохраняем текст в переменную
-    user_id = message.from_user.id
-    uswer_tg_full_name = message.from_user.full_name
+    tg_id = message.from_user.id
+    date = datetime.now().strftime("%Y-%m-%d")  #дата сообщения
+    time = datetime.now().strftime("%H:%M:%S")  #время сообщения (местное время пользователя)
+    data = await state.get_data()                       
+    attendance_text = data["reason_text"]
+    
+    attendance = 'прочее'                        #ЗАГЛУШКА ДЛЯ МОДЕЛИ!!!
+        
+    await rq.log_user(tg_id, date, time, attendance_text, attendance)
     await message.answer('Мне жаль, что вам не удалось выйти на работу. Буду ждать вашего возвращения!')
     await message.answer('Информацию я передал.')
-    await message.answer(f'uswer_tg_full_name: {uswer_tg_full_name}\nuser_id: {user_id}\nreason_text: {data["reason_text"]}')
     await state.clear()
     
 
