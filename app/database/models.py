@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, String, ForeignKey
+from sqlalchemy import BigInteger, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 
@@ -15,13 +15,15 @@ class User(Base):
     __tablename__ = 'users'
     
     id: Mapped[int] = mapped_column(primary_key=True)
-    tg_id = mapped_column(BigInteger)
+    reg_date = mapped_column(String(10))            #дата регистрации
+    tg_id = mapped_column(BigInteger)               #id телеграм-аккаунта
     tg_full_name = mapped_column(String(50))        #полное имя как записан в тг
     user_fname = mapped_column(String(25))          #имя при регистрации
     user_sname = mapped_column(String(25))          #отчество
     user_surname = mapped_column(String(25))        #фамилия
-    user_city = mapped_column(String(50))           # город
-    user_point = mapped_column(String(50))          # рабочий пункт
+    user_city = mapped_column(String(50))           #город
+    user_company = mapped_column(String(50))        #компания
+    user_point = mapped_column(String(50))          #объект на котором работает
 
 class Log(Base):
     __tablename__ = 'logs'

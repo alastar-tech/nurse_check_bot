@@ -1,11 +1,5 @@
-from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton,
-                           InlineKeyboardMarkup, InlineKeyboardButton)
+from aiogram.types import (InlineKeyboardMarkup, InlineKeyboardButton)
 
-
-main = ReplyKeyboardMarkup(keyboard=[
-            [KeyboardButton(text='Поставить отметку')],
-            [KeyboardButton(text='Регистрация')]],
-                            resize_keyboard=True)               #минимальный размер клавиатуры
 
 # Альтернативная клавиатура для регистрации
 reg_btn = InlineKeyboardMarkup(inline_keyboard=[
