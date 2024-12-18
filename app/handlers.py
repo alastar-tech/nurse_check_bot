@@ -1,19 +1,23 @@
-from aiogram import F, Router, Bot, types
+from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, BufferedInputFile
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext          #для управления состояниями юзера при регистрации
 from datetime import datetime
+from io import BytesIO
+from openpyxl import Workbook
+
 
 import app.keyboards as kb          #импорт всех клавиатур
 import app.database.requests as rq  #импорт запросов к БД
-import app.ml_lm.model as mllm
+import app.ml_lm.model as mllm      #импорт работы модели ML
+from config import ADMINS           #импорт списка id админов, которым нужна статистика
 
 router = Router()                   #выполняет роль диспетчера
 
 #состояния пользователя когда пишет текст причины
-class Reason(StatesGroup):
-    reason_text = State()
+#class Reason(StatesGroup):
+#    reason_text = State()
     
 #состояния пользователя при регистрации
 class Register(StatesGroup):
@@ -25,7 +29,12 @@ class Register(StatesGroup):
     point = State()
     correct_yes = State()
     correct_no = State()
-    
+
+# данные для экспорта
+class Export(StatesGroup):
+    year = State()
+    month = State()    
+
 
 #обработка команды /start
 @router.message(Command('start'))                 
@@ -120,8 +129,75 @@ async def reg_yes(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer('Регистрация прервана.\nДля повтора попытки нажмите кнопку ниже.',
                                   reply_markup=kb.reg_btn)
     
+    
 
+'''Экспорт файла статистики за месяц'''
+# спрашиваем год
+@router.message(Command('export'))
+async def export_start(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id in ADMINS:
+        if callback.chat.type != 'private':
+            await callback.answer('Я бы не рекомендовал выгружать эту информацию в общий чат!\n@nurse_check_bot')
+        else:            
+            dates = await rq.load_dates()
+            years = sorted(list(set(datetime.strptime(date[0], "%Y-%m-%d").year for date in dates)))
+            await callback.answer('Выберите год:', reply_markup=kb.custom_button(years))
+            await state.set_state(Export.year)
+    else:
+        await callback.answer('Эта функция доступна только администраторам!')
+        
+# спрашиваем месяц
+@router.callback_query(Export.year)
+async def export_continue(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.update_data(year=callback.data)
+    dates = await rq.load_dates(callback.data)
+    months = sorted(list(set(datetime.strptime(date[0], "%Y-%m-%d").month for date in dates)))
+    names = ['','Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+    month_names = [names[m] for m in months]
+    await state.set_state(Export.month)
+    await callback.message.answer('Веберите месяц:', reply_markup=kb.custom_button(month_names,months))
 
+# отвечаем файлом
+@router.callback_query(Export.month)
+async def export_finish(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.update_data(month=callback.data)
+    if callback.from_user.id in ADMINS:
+        stgd = await state.get_data()
+        countlog, datalog = await rq.export_logs(int(stgd['year']),int(stgd['month']))
+        if (datalog == None):
+            await callback.message.answer("Данные отсутствуют, возможно это связано с ошибкой. Обратитесь к разработчикам.")
+        else:
+            file_data = BytesIO()
+            wb = Workbook()
+            ws1 = wb.active
+            ws1.title = "подсчет_пофамильно"
+            ws2 = wb.create_sheet(title="полный_журнал")
+            for row in countlog:
+                ws1.append(row)
+            for row in datalog:
+                ws2.append(row)
+            wb.save(file_data)
+            file_data.seek(0)
+            file_bin = BufferedInputFile(file_data.getvalue(), filename = f"Посещения_{stgd['year']}-{int(stgd['month']):02d}.xlsx")
+            
+            from run import bot
+            m_names = ['','Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+            request_month = m_names[int(stgd['month'])] #для красивого вывода сообщения
+            await callback.message.answer(f"Вот файл с отметками на рабочем месте за {str.lower(request_month)} {stgd['year']} года 👇")
+            print(stgd)
+            await bot.send_document(chat_id=callback.from_user.id, document=file_bin)
+            
+    else:
+        await callback.message.answer('Эта функция доступна только администраторам! ')
+        from run import bot
+        await bot.send_message(chat_id=ADMINS[0], text=' Попытка взлома со стороны пользователя @'+callback.from_user.username)
+    await state.clear()      
+        
+        
+        
+        
 '''Скрипт отслеживания сообщений в чате'''
 #если по сообщению не находит id юзера, отправляет кнопку регистрации в боте, а само сообщ НЕ отправляет в БД
 @router.message()
@@ -162,33 +238,6 @@ async def any_message(message: Message):
         #если юзер написал в боте
         else:
             await message.reply('Тут я не принимаю сообщения - только в чате :)')
-
-
-'''  
-#если по сбщ не находит id юзера, отправляет кнопку регистрации в боте, но само сообщ отправляет в БД
-@router.message()
-async def any_message(message: Message):
-    if message.text != None:
-        context = message.text             #получение каждого сообщения
-        if not await rq.find_user(message.from_user.id):
-            from run import bot
-            await bot.send_message(chat_id=message.from_user.id,
-                                    text='Вы написали сообщение в рабочем чате. Чтобы бот мог отслеживать Ваши сообщения - \
-                                    пройдите регистрацию по кнопке.',
-                                    reply_markup=kb.reg_btn)
-        is_onpoint = mllm.analyse_text(context) # передача сообщения в модель
-        if is_onpoint:
-            attendance = 1
-            await message.reply('Принял сообщение о Вашем прибытии')
-        else:
-            attendance = 0
-        tg_id = message.from_user.id
-        date = datetime.now().strftime("%Y-%m-%d")  #дата сообщения
-        time = datetime.now().strftime("%H:%M:%S")  #время сообщения (местное время пользователя)
-        await rq.log_user(tg_id, date, time, context, attendance)
-    else:
-        return False
-'''    
 
 
     
