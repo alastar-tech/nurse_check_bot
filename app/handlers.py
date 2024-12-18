@@ -224,7 +224,7 @@ async def any_message(message: Message):
                                         reply_markup=kb.reg_btn)
             #если юзер зареган    
             else:
-                is_onpoint = mllm.analyse_text(context) # передача сообщения в модель
+                is_onpoint = mllm.analyze_text(context) # передача сообщения в модель
                 if is_onpoint:
                     attendance = 1
                     await message.reply('Сообщение о присутствии принято.')
