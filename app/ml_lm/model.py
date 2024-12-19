@@ -60,7 +60,7 @@ def analyze_text(text: str) -> int:
     # Get the predicted class
     predicted_class = torch.argmax(probabilities, dim=-1).item()
 
-    return predicted_class
+    return predicted_class, probabilities
 
 # Example usage
 if __name__ == "__main__":
