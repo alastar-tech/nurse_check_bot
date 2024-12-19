@@ -1,4 +1,7 @@
 .idea
 /venv/
 /.venv/
+__init__.py
+test*
+__pycache__/
 config.py
