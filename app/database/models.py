@@ -33,8 +33,8 @@ class Log(Base):
     time = mapped_column(String(10))
     attendance_text = mapped_column(String(50))
     attendance = mapped_column(String(10))
-    
-    
+    coef = mapped_column(String(10))
+
 
 
 #создание таблиц в БД, если их нет    

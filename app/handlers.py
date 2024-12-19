@@ -210,7 +210,6 @@ async def any_message(message: Message):
         
         #если юзер пишет в чате (не в боте)
         if message.chat.id != message.from_user.id:
-            
             #если юзер не зареган
             if not await rq.find_user(message.from_user.id):
                 
@@ -222,9 +221,10 @@ async def any_message(message: Message):
                                         text='Вы написали сообщение в рабочем чате. Чтобы бот мог отслеживать Ваши сообщения - \
                                         пройдите регистрацию по кнопке.',
                                         reply_markup=kb.reg_btn)
-            #если юзер зареган    
+            #если юзер зареган
             else:
-                is_onpoint = mllm.analyze_text(context) # передача сообщения в модель
+                #req_string = message.from_user.first_name+" "+message.from_user.last_name+" "+context
+                is_onpoint, coef = mllm.analyze_text(context) # передача сообщения в модель
                 if is_onpoint:
                     attendance = 1
                     await message.reply('Сообщение о присутствии принято.')
@@ -233,7 +233,7 @@ async def any_message(message: Message):
                 tg_id = message.from_user.id
                 date = datetime.now().strftime("%Y-%m-%d")  #дата сообщения
                 time = datetime.now().strftime("%H:%M:%S")  #время сообщения (местное время пользователя)
-                await rq.log_user(tg_id, date, time, context, attendance)
+                await rq.log_user(tg_id, date, time, context, attendance, float(coef[0][1]))
         
         #если юзер написал в боте
         else:

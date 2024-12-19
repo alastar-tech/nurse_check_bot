@@ -1,5 +1,5 @@
 # predict.py
-
+import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import os
@@ -27,6 +27,21 @@ model.eval()
 # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # model.to(device)
 
+
+def print_probabilities(func):
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        probs = result[1].detach().numpy().flatten()  # Convert to numpy array and flatten
+        formatted_probs = {
+            "Negative": f"{probs[0]*100:.2f}%",
+            "Positive": f"{probs[1]*100:.2f}%"
+        }
+        print(f"Prediction probabilities: {formatted_probs}")
+        return result
+    return wrapper
+
+
+@print_probabilities
 def analyze_text(text: str) -> int:
     """
     Predicts the label for a given text string.
@@ -60,7 +75,7 @@ def analyze_text(text: str) -> int:
     # Get the predicted class
     predicted_class = torch.argmax(probabilities, dim=-1).item()
 
-    return predicted_class
+    return predicted_class, probabilities
 
 # Example usage
 if __name__ == "__main__":

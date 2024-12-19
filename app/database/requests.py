@@ -29,13 +29,14 @@ async def find_user(tg_id: int):
         return await session.scalar(select(User).where(User.tg_id == tg_id))
 
 #запись данных о присутствии/прочее
-async def log_user(tg_id: int, date: str, time: str, attendance_text: str, attendance: str):
+async def log_user(tg_id: int, date: str, time: str, attendance_text: str, attendance: str, coef: float):
     async with async_session() as session:   #контекстный менеджер для открытия и зарытия сессии
         session.add(Log(tg_id=tg_id, 
                         date=date,
                         time=time,
                         attendance_text=attendance_text,
-                        attendance=attendance))
+                        attendance=attendance,
+                        coef=coef))
         await session.commit()          #сохранение информации
 
 #выгружаем даты
